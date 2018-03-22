@@ -186,11 +186,15 @@ def children(node):
 # need to be improved in the next delivery
 def heuristic(nodeValue):
     # the heuristic value is the number of different char in row 1 and row 3
-    h = 0
+    
+	h = 0
+	# heuristic need to be improved, the search speed too slow 
+	'''
     for i in range(5):
         if nodeValue[0, i] != nodeValue[2, i]:
             h += 1
-    return h
+    '''
+	return h
 
 # function to perform automatic mode
 # we use Algorithm A* for search that will give us the shortest solution path to the goal
