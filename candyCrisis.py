@@ -136,13 +136,149 @@ def manualMode():
     f.close()
 
 
-'''
-Delivery 2
-'''
 
+################################
+# Delivery 2
+################################
+
+# node class
+class Node:
+    def __init__(self, value, parent, move):
+        self.value = value
+        self.parent = parent
+        self.move = move
+        self.H = 0
+        self.G = 0
+        self.F = 0
+
+
+# function for find all children of the current accessed node
+# search all possible move which is around ' ' in current node config
+# find the correspond char in play board and the new config after choose the move action
+# and then create new node for children node
+def children(node):
+    children = []
+    currentIndex = np.where(node.value == ' ')
+    currentPlayBoardChar = ''.join(playBoard[currentIndex])
+    currentPlayBoardPos = ord(currentPlayBoardChar)
+
+    # create new node for each possible movement add into a list
+    for pm in potentialMove:
+        childNode = None
+        config = np.copy(node.value)
+        move = chr(currentPlayBoardPos + pm)
+        if (set([move,currentPlayBoardChar]) == set(['E','F'])):
+            continue
+        if (set([move, currentPlayBoardChar]) == set(['J', 'K'])):
+            continue
+        if np.any(playBoard == move):
+            moveToIndex = np.where(playBoard == move)
+            config[moveToIndex], config[currentIndex] = config[currentIndex], config[moveToIndex]
+            childNode = Node(config, node, move)
+            childNode.H = heuristic(config)
+            childNode.G = node.G + 1
+            childNode.F = childNode.H + childNode.G
+            children.append(childNode)
+
+    return children
+
+# function to calculate the heuristic value of the config
+# need to be improved in the next delivery
+def heuristic(nodeValue):
+    # the heuristic value is the number of different char in row 1 and row 3
+    h = 0
+    for i in range(5):
+        if nodeValue[0, i] != nodeValue[2, i]:
+            h += 1
+    return h
+
+# function to perform automatic mode
+# we use Algorithm A* for search that will give us the shortest solution path to the goal
 def autoMode():
-	# will be done in delivery 2
-    return 0
+    gameStep = 0
+
+    for i in range(len(allIniConfig)):
+        solutionPath = []  # list for record sequence of valid moves
+        start = time.time()  # start timing
+
+        openList = set()
+        closeList = set()
+
+        # load and display the initial play board for user
+        print("candyBox:")
+        iniConfig = allIniConfig.popleft()
+        candyBox = loadInitialConfiguration(iniConfig)
+        printCandyBox(candyBox)
+
+        # the search root will be the node initial configuration
+        searchRoot = Node(np.copy(candyBox), None, '')
+        searchRoot.G = 0
+        searchRoot.H = heuristic(searchRoot.value)
+        searchRoot.F = searchRoot.H + searchRoot.G
+        openList.add(searchRoot)
+
+        # search loop
+        while openList:
+            current = min(openList, key=lambda x: x.F)
+            candyBox = np.copy(current.value)
+
+            # check if the current node is the goal state, if yes, find the solution path
+            if checkWon(candyBox):
+                end = time.time()
+                timeElapsed = end - start
+
+                # construct the solution path
+                while current.parent != None:
+                    solutionPath.insert(0, current)
+                    current = current.parent
+                solutionPath.insert(0, current)
+
+                gameStep += len(solutionPath) - 1
+                f = open('solutionPath.txt', 'a', newline='')
+                print('length of close list: ', len(closeList))
+
+                # in console print the configs and write the moves into the file
+                for node in solutionPath:
+                    printCandyBox(node.value)
+                    f.write(node.move)
+                f.write("\r\n" + format(timeElapsed * 1000) + "ms\r\n")
+                f.close()
+                print("Congratulations! You solved this puzzle!")
+                break
+
+            # remove the current node from open list and add it into close list
+            openList.remove(current)
+            closeList.add(current)
+
+            # for the each child of current access node, check whether the config(state) is in the close list(ignore it) or in the open list
+            # if it is in the open list, check the G value (is it the shortest path from start to n) if current g smaller than node.g in open list
+            # update the g value and parent of the node in open list
+            for node in children(current):
+                inClose = False
+                inOpen = False
+                for closeNode in closeList:
+                    if np.array_equal(closeNode.value, node.value):
+                        inClose = True
+                        break
+                if inClose:
+                    continue
+                for openNode in openList:
+                    if np.array_equal(openNode.value, node.value):
+                        current_g = current.G + 1
+                        if openNode.G > current_g:
+                            openNode.G = current_g
+                            openNode.F = openNode.G + openNode.H
+                            openNode.move = node.move
+                            openNode.parent = current
+                        inOpen = True
+                        break
+                if inOpen == False:
+                    openList.add(node)
+
+    # record the total step fro solving all puzzles
+    f = open('solutionPath.txt', 'a')
+    f.write(format(gameStep))
+    f.close()
 
 
 
